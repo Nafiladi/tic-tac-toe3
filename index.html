@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fantastic Multiplayer Tic-Tac-Toe</title>
+    <style>
+        /* Importing a fascinating font from Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        /* CSS Variables for Themes */
+        :root {
+            --bg-color: #141e30;
+            --bg-gradient: linear-gradient(to right, #243b55, #141e30);
+            --cell-bg: rgba(255, 255, 255, 0.1);
+            --cell-hover-bg: rgba(255, 255, 255, 0.2);
+            --text-color: #fff;
+            --line-color: #ffcc00;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f0f0f0;
+            --bg-gradient: linear-gradient(to right, #ffffff, #e0e0e0);
+            --cell-bg: rgba(0, 0, 0, 0.05);
+            --cell-hover-bg: rgba(0, 0, 0, 0.1);
+            --text-color: #000;
+            --line-color: #ff4081;
+        }
+
+        /* Resetting default margins and paddings */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body styling */
+        body {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-color);
+            background-image: var(--bg-gradient);
+            font-family: 'Press Start 2P', cursive;
+            color: var(--text-color);
+            overflow: hidden;
+            transition: background 0.5s;
+        }
+
+        /* Game container */
+        .game-container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .game-container h1 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px #000;
+        }
+
+        /* Dynamic Turn Indicator */
+        #turn-indicator {
+            font-size: 1em;
+            margin-bottom: 20px;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Game board styling */
+        #game-board {
+            display: grid;
+            grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+            gap: 10px;
+            margin: 0 auto;
+            width: 100%;
+            height: 300px;
+        }
+
+        .cell {
+            background-color: var(--cell-bg);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            font-size: 3em;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .cell:hover {
+            background-color: var(--cell-hover-bg);
+            transform: scale(1.05);
+        }
+
+        /* Winning Line */
+        .winning-line {
+            position: absolute;
+            background-color: var(--line-color);
+            z-index: -1;
+            border-radius: 5px;
+            animation: glow 1s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 10px var(--line-color); }
+            to { box-shadow: 0 0 20px var(--line-color); }
+        }
+
+        /* Status and buttons */
+        #status {
+            margin-top: 20px;
+            font-size: 1em;
+            text-shadow: 1px 1px #000;
+        }
+
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            font-size: 0.8em;
+            font-family: inherit;
+            color: var(--text-color);
+            background: linear-gradient(90deg, #ff8a00, #e52e71);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background 0.3s, box-shadow 0.3s;
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            box-shadow: 0 0 10px #e52e71, 0 0 20px #ff8a00;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .cell {
+                font-size: 2em;
+            }
+
+            #game-board {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Multiplayer Tic-Tac-Toe</h1>
+        <div id="lobby">
+            <button id="create-room" class="btn">Create Room</button>
+            <input type="text" id="room-id" placeholder="Enter Room ID">
+            <button id="join-room" class="btn">Join Room</button>
+        </div>
+        <div id="turn-indicator" style="display: none;">Connecting...</div>
+        <div id="game-board" style="display: none;">
+            <div class="cell" data-cell-index="0"></div>
+            <div class="cell" data-cell-index="1"></div>
+            <div class="cell" data-cell-index="2"></div>
+            <div class="cell" data-cell-index="3"></div>
+            <div class="cell" data-cell-index="4"></div>
+            <div class="cell" data-cell-index="5"></div>
+            <div class="cell" data-cell-index="6"></div>
+            <div class="cell" data-cell-index="7"></div>
+            <div class="cell" data-cell-index="8"></div>
+        </div>
+        <div id="status"></div>
+        <div class="button-group">
+            <button id="restart" class="btn" style="display: none;">Restart Game</button>
+            <button id="theme-toggle" class="btn">Toggle Theme</button>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript: Multiplayer game logic and interactivity
+        const cells = document.querySelectorAll('.cell');
+        const statusText = document.getElementById('status');
+        const restartButton = document.getElementById('restart');
+        const themeToggleButton = document.getElementById('theme-toggle');
+        const turnIndicator = document.getElementById('turn-indicator');
+        const gameBoard = document.getElementById('game-board');
+        const lobby = document.getElementById('lobby');
+        const createRoomButton = document.getElementById('create-room');
+        const joinRoomButton = document.getElementById('join-room');
+        const roomIdInput = document.getElementById('room-id');
+
+        const winningCombinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+            [0, 4, 8], [2, 4, 6]             // Diagonals
+        ];
+
+        let options = ["", "", "", "", "", "", "", "", ""];
+        let running = false;
+        let theme = 'dark';
+        let playerSymbol = null;
+        let opponentSymbol = null;
+        let isMyTurn = false;
+        let roomId = null;
+
+        const ws = new WebSocket('ws://localhost:8080');
+
+        ws.onopen = () => {
+            console.log('Connected to WebSocket server');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log('Received message:', data);
+            switch (data.type) {
+                case 'roomCreated':
+                    roomId = data.roomId;
+                    startGame();
+                    break;
+                case 'roomJoined':
+                    roomId = data.roomId;
+                    startGame();
+                    break;
+                case 'playerJoined':
+                    alert('Another player has joined the room. You can start playing now.');
+                    break;
+                case 'move':
+                    updateCell(cells[data.cellIndex], data.cellIndex, data.symbol);
+                    checkWinner(data.symbol);
+                    isMyTurn = true;
+                    updateTurnIndicator();
+                    break;
+                case 'error':
+                    alert(data.message);
+                    break;
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = (event) => {
+            console.log('WebSocket connection closed:', event);
+        };
+
+        createRoomButton.addEventListener('click', () => {
+            console.log('Create Room button clicked');
+            ws.send(JSON.stringify({ type: 'createRoom' }));
+        });
+
+        joinRoomButton.addEventListener('click', () => {
+            const roomId = roomIdInput.value.trim();
+            console.log('Join Room button clicked with Room ID:', roomId);
+            if (roomId) {
+                ws.send(JSON.stringify({ type: 'joinRoom', roomId }));
+            } else {
+                alert('Please enter a room ID');
+            }
+        });
+
+        function startGame() {
+            lobby.style.display = 'none';
+            turnIndicator.style.display = 'block';
+            gameBoard.style.display = 'grid';
+            restartButton.style.display = 'block';
+            initializeGame();
+        }
+
+        function initializeGame() {
+            // Prompt for player symbol
+            playerSymbol = prompt("Choose your symbol: X or O").toUpperCase();
+            if (playerSymbol !== "X" && playerSymbol !== "O") {
+                alert("Invalid symbol! Defaulting to X.");
+                playerSymbol = "X";
+            }
+            opponentSymbol = playerSymbol === "X" ? "O" : "X";
+
+            // Determine who goes first
+            isMyTurn = playerSymbol === "X";
+            updateTurnIndicator();
+
+            // Set up event listeners
+            cells.forEach(cell => cell.addEventListener('click', cellClicked));
+            restartButton.addEventListener('click', restartGame);
+            themeToggleButton.addEventListener('click', toggleTheme);
+            window.addEventListener('storage', syncGameState);
+            running = true;
+
+            // Sync game state if any
+            syncGameState();
+        }
+
+        function cellClicked() {
+            const cellIndex = this.getAttribute('data-cell-index');
+
+            if (options[cellIndex] !== "" || !running || !isMyTurn) {
+                return;
+            }
+
+            updateCell(this, cellIndex, playerSymbol);
+            checkWinner(playerSymbol);
+
+            // Update shared game state
+            ws.send(JSON.stringify({
+                type: 'move',
+                roomId,
+                cellIndex,
+                symbol: playerSymbol
+            }));
+
+            isMyTurn = false;
+            updateTurnIndicator();
+        }
+
+        function updateCell(cell, index, symbol) {
+            options[index] = symbol;
+            cell.textContent = symbol;
+        }
+
+        function updateTurnIndicator() {
+            turnIndicator.textContent = isMyTurn ? `Your Turn (${playerSymbol})` : `Opponent's Turn (${opponentSymbol})`;
+        }
+
+        function checkWinner(symbol) {
+            let roundWon = false;
+
+            for (let i = 0; i < winningCombinations.length; i++) {
+                const [a, b, c] = winningCombinations[i];
+                if (options[a] === symbol && options[b] === symbol && options[c] === symbol) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                statusText.textContent = `Player ${symbol} Wins! 🎉`;
+                running = false;
+                ws.send(JSON.stringify({
+                    type: 'win',
+                    roomId,
+                    symbol
+                }));
+            } else if (!options.includes("")) {
+                statusText.textContent = `It's a Tie! 🤝`;
+                running = false;
+                ws.send(JSON.stringify({
+                    type: 'tie',
+                    roomId
+                }));
+            } else {
+                isMyTurn = false;
+                updateTurnIndicator();
+            }
+        }
+
+        function syncGameState() {
+            const gameState = JSON.parse(localStorage.getItem('ticTacToeState'));
+            if (gameState) {
+                options = gameState.options;
+                for (let i = 0; i < options.length; i++) {
+                    cells[i].textContent = options[i];
+                }
+
+                if (gameState.action === 'move') {
+                    isMyTurn = gameState.currentPlayer === playerSymbol;
+                    updateTurnIndicator();
+                    running = true;
+                    statusText.textContent = '';
+                } else if (gameState.action === 'win' || gameState.action === 'tie') {
+                    running = false;
+                    statusText.textContent = gameState.action === 'win' ? `Player ${gameState.winner} Wins! 🎉` : `It's a Tie! 🤝`;
+                }
+            }
+        }
+
+        function restartGame() {
+            options = ["", "", "", "", "", "", "", "", ""];
+            cells.forEach(cell => {
+                cell.textContent = "";
+            });
+            statusText.textContent = '';
+            isMyTurn = playerSymbol === "X";
+            updateTurnIndicator();
+            running = true;
+
+            // Clear shared game state
+            ws.send(JSON.stringify({
+                type: 'restart',
+                roomId
+            }));
+        }
+
+        function toggleTheme() {
+            theme = theme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            document.body.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
+            console.log('Theme toggled to:', theme);
+        }
+
+        // Clear game state on page unload
+        window.addEventListener('beforeunload', () => {
+            localStorage.removeItem('ticTacToeState');
+        });
+    </script>
+
+</body>
+</html>
